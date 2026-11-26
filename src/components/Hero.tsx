@@ -45,8 +45,8 @@ export const Hero: React.FC = () => {
         {/* ================================================================ */}
         {/* RIGHT SIDE: PROMINENT 2.5D INTERACTIVE PORTRAIT                  */}
         {/* ================================================================ */}
-        <div className="md:col-span-5 lg:col-span-5 flex justify-center md:justify-end items-center w-full">
-          <div className="w-full max-w-[340px] sm:max-w-[400px] md:max-w-[460px] lg:max-w-[500px]">
+        <div className="md:col-span-5 lg:col-span-5 flex justify-center md:justify-end items-center w-full min-w-0">
+          <div className="mx-auto w-full max-w-[min(78vw,320px)] sm:max-w-[400px] md:mx-0 md:max-w-[460px] lg:max-w-[500px]">
             <DimensionalPortrait />
           </div>
         </div>

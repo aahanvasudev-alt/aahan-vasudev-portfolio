@@ -21,27 +21,45 @@ export const AboutMe: React.FC = () => {
       if (!one || !two || !three || reduceMotion) return;
 
       if (mobile) {
-        const reveal = (elements: Element | NodeListOf<Element> | null, trigger: Element) => {
+        const reveal = (
+          elements: Element | NodeListOf<Element> | null,
+          trigger: Element,
+          key: string,
+          start = 'top 82%'
+        ) => {
           if (!elements || (elements instanceof NodeList && elements.length === 0)) return;
-          gsap.fromTo(elements,
-            { y: 26, opacity: 0, filter: 'blur(5px)' },
-            {
-              y: 0,
-              opacity: 1,
-              filter: 'blur(0px)',
-              duration: 0.8,
-              stagger: 0.035,
-              ease: 'power3.out',
-              scrollTrigger: { trigger, start: 'top 82%', once: true },
-            }
-          );
+          const marker = trigger as HTMLElement;
+          const flag = `aboutReveal${key}`;
+          if (marker.dataset[flag] === 'played') return;
+
+          ScrollTrigger.create({
+            trigger,
+            start,
+            once: true,
+            onEnter: () => {
+              if (marker.dataset[flag] === 'played') return;
+              marker.dataset[flag] = 'played';
+              gsap.fromTo(elements,
+                { y: 26, opacity: 0, filter: 'blur(5px)' },
+                {
+                  y: 0,
+                  opacity: 1,
+                  filter: 'blur(0px)',
+                  duration: 0.8,
+                  stagger: 0.035,
+                  ease: 'power3.out',
+                  overwrite: 'auto',
+                }
+              );
+            },
+          });
         };
 
-        reveal(one.querySelectorAll('.about-reveal'), one);
-        reveal(one.querySelectorAll('.about-copy-word'), one);
-        reveal(two.querySelectorAll('.about-word'), two);
-        reveal(two.querySelectorAll('.about-copy-word'), two);
-        reveal(three.querySelectorAll('h3, .about-final-copy'), three);
+        reveal(one.querySelectorAll('.about-reveal'), one, 'OpeningTitle');
+        reveal(one.querySelectorAll('.about-copy-word'), one, 'OpeningCopy', 'top 88%');
+        reveal(two.querySelectorAll('.about-word'), two, 'SecondTitle');
+        reveal(two.querySelectorAll('.about-copy-word'), two, 'SecondCopy', 'top 88%');
+        reveal(three.querySelectorAll('h3, .about-final-copy'), three, 'FinalPanel');
         return;
       }
 

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 export const DimensionalPortrait: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -6,7 +6,6 @@ export const DimensionalPortrait: React.FC = () => {
   const imageRef = useRef<HTMLImageElement | null>(null);
   const glareRef = useRef<HTMLDivElement | null>(null);
   const ambientGlowRef = useRef<HTMLDivElement | null>(null);
-  const [motionEnabled, setMotionEnabled] = useState(false);
 
   useEffect(() => {
 
@@ -30,22 +29,42 @@ export const DimensionalPortrait: React.FC = () => {
       targetY = Math.max(-1, Math.min(1, (event.beta - 35) / 45));
     };
 
-    const OrientationEvent = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
-      requestPermission?: () => Promise<'granted' | 'denied'>;
+    const OrientationEvent = typeof DeviceOrientationEvent !== 'undefined'
+      ? (DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+          requestPermission?: () => Promise<'granted' | 'denied'>;
+        })
+      : null;
+
+    let orientationAttached = false;
+    const attachOrientation = () => {
+      if (orientationAttached) return;
+      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+      orientationAttached = true;
     };
 
-    const startDeviceMotion = () => {
-      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+    // Android and browsers without a permission gate can begin immediately.
+    // iOS asks for permission on the visitor's first natural interaction anywhere
+    // on the page, so there is no extra "Enable Motion" control in the design.
+    const requestMotionOnFirstInteraction = async () => {
+      if (!isMobile || !OrientationEvent?.requestPermission) {
+        attachOrientation();
+        return;
+      }
+      try {
+        const permission = await OrientationEvent.requestPermission();
+        if (permission === 'granted') attachOrientation();
+      } catch (error) {
+        console.warn('Device orientation permission was not granted.', error);
+      }
     };
-    window.addEventListener('portfolio-motion-enable', startDeviceMotion);
 
-    // Android and browsers without an explicit permission gate can start listening
-    // immediately. iOS is enabled by the user's button below.
-    if (isMobile && !OrientationEvent.requestPermission) {
-      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
-      setMotionEnabled(true);
+    if (isMobile) {
+      if (OrientationEvent?.requestPermission) {
+        window.addEventListener('pointerdown', requestMotionOnFirstInteraction, { once: true, passive: true });
+      } else {
+        attachOrientation();
+      }
     }
-
 
     const updatePhysics = () => {
       // Damped spring interpolation (lerp factor: 0.075 for fluid cinematic motion)
@@ -98,32 +117,16 @@ export const DimensionalPortrait: React.FC = () => {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
-      window.removeEventListener('portfolio-motion-enable', startDeviceMotion);
+      window.removeEventListener('pointerdown', requestMotionOnFirstInteraction);
       cancelAnimationFrame(rafId);
     };
   }, []);
 
-  const enableMotion = async () => {
-    const OrientationEvent = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
-      requestPermission?: () => Promise<'granted' | 'denied'>;
-    };
-    try {
-      if (OrientationEvent.requestPermission) {
-        const permission = await OrientationEvent.requestPermission();
-        if (permission !== 'granted') return;
-      }
-      // Dispatching the event listener from this user gesture satisfies iOS permission policy.
-      window.dispatchEvent(new Event('portfolio-motion-enable'));
-      setMotionEnabled(true);
-    } catch (error) {
-      console.warn('Device motion permission was not granted.', error);
-    }
-  };
 
   return (
     <div
       ref={containerRef}
-      className="relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px] select-none pointer-events-auto"
+      className="relative mx-auto flex w-full max-w-[280px] items-center justify-center select-none pointer-events-auto sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]"
       style={{ perspective: '1200px' }}
       aria-label="Portrait of Filmmaker Ashish Vooradi"
     >
@@ -142,7 +145,7 @@ export const DimensionalPortrait: React.FC = () => {
       {/* Layer 1: The Dimensional Director's Frame with solid opaque backing */}
       <div
         ref={cardRef}
-        className="relative z-10 w-full aspect-[4/5] sm:aspect-[9/12] rounded-xs bg-black border border-white/20 p-2 sm:p-2.5 shadow-2xl overflow-hidden transition-shadow duration-500 hover:shadow-white/10"
+        className="relative z-10 w-full aspect-[4/5] rounded-xs bg-black border border-white/20 p-1.5 sm:p-2.5 shadow-2xl overflow-hidden transition-shadow duration-500 hover:shadow-white/10"
         style={{
           transformStyle: 'preserve-3d',
           willChange: 'transform',
@@ -154,20 +157,20 @@ export const DimensionalPortrait: React.FC = () => {
             ref={imageRef}
             src="/images/ashish-vooradi.JPG"
             alt="Ashish Vooradi - Filmmaker"
-            className="w-full h-full object-cover object-top transition-transform duration-300 ease-out filter contrast-[1.04]"
+            className="block h-full w-full object-cover object-[50%_28%] transition-transform duration-300 ease-out filter contrast-[1.04]"
             style={{
               willChange: 'transform',
-              transform: 'scale(1.05)',
+              transform: 'scale(1.035)',
             }}
             loading="eager"
           />
 
           {/* Ambient Film Vignette */}
           <div
-            className="absolute inset-0 pointer-events-none opacity-10"
+            className="absolute inset-0 pointer-events-none opacity-[0.035]"
             style={{
               background:
-                'radial-gradient(circle at center, transparent 65%, rgba(0,0,0,0.45) 100%)',
+                'radial-gradient(circle at center, transparent 78%, rgba(0,0,0,0.22) 100%)',
             }}
           />
 
@@ -200,14 +203,6 @@ export const DimensionalPortrait: React.FC = () => {
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={enableMotion}
-        className="absolute -bottom-9 right-0 z-30 rounded-full border border-white/20 bg-black/70 px-3 py-1.5 font-mono text-[9px] tracking-[.2em] text-white/65 backdrop-blur-sm transition-colors hover:border-[#d5a65b]/60 hover:text-[#d5a65b] md:hidden"
-        aria-label="Enable motion response for portrait"
-      >
-        {motionEnabled ? 'MOTION ACTIVE' : 'ENABLE MOTION'}
-      </button>
     </div>
   );
 };

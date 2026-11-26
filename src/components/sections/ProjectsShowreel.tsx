@@ -14,6 +14,7 @@ export const ProjectsShowreel: React.FC = () => {
   const cameraSpaceRef = useRef<HTMLDivElement | null>(null);
   const planesRef = useRef<(HTMLDivElement | null)[]>([]);
   const indexIndicatorsRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const mobileCardsRef = useRef<(HTMLElement | null)[]>([]);
 
   // Entrance header references
   const entranceRef = useRef<HTMLDivElement | null>(null);
@@ -71,8 +72,73 @@ export const ProjectsShowreel: React.FC = () => {
         );
       }
 
-      // Mobile devices use fluid vertical layout without intense pinning
-      if (isMobile) return;
+      // Mobile keeps natural touch scrolling, but each project now travels through
+      // a compact 3D camera beat instead of appearing as a static list.
+      if (isMobile) {
+        if (!prefersReducedMotion) {
+          mobileCardsRef.current.forEach((card) => {
+            if (!card) return;
+            const image = card.querySelector<HTMLElement>('.mobile-project-image');
+            const title = card.querySelector<HTMLElement>('.mobile-project-title');
+            const meta = card.querySelectorAll<HTMLElement>('.mobile-project-meta');
+
+            const mobileTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: card,
+                start: 'top 92%',
+                end: 'bottom 12%',
+                scrub: 0.65,
+                invalidateOnRefresh: true,
+              },
+            });
+
+            mobileTl.fromTo(card,
+              { y: 72, scale: 0.92, rotateX: 7, autoAlpha: 0.48, transformPerspective: 900 },
+              { y: 0, scale: 1, rotateX: 0, autoAlpha: 1, ease: 'none', duration: 0.42 },
+              0
+            );
+
+            if (image) {
+              mobileTl.fromTo(image,
+                { scale: 1.2, filter: 'blur(7px)', z: -120 },
+                { scale: 1, filter: 'blur(0px)', z: 0, ease: 'none', duration: 0.42 },
+                0
+              );
+              mobileTl.to(image, {
+                scale: 1.12,
+                filter: 'blur(2px)',
+                ease: 'none',
+                duration: 0.24,
+              }, 0.66);
+            }
+
+            if (title) {
+              mobileTl.fromTo(title,
+                { y: 28, autoAlpha: 0, filter: 'blur(5px)' },
+                { y: 0, autoAlpha: 1, filter: 'blur(0px)', ease: 'none', duration: 0.22 },
+                0.2
+              );
+            }
+
+            if (meta.length) {
+              mobileTl.fromTo(meta,
+                { y: 18, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, stagger: 0.04, ease: 'none', duration: 0.2 },
+                0.28
+              );
+            }
+
+            mobileTl.to(card, {
+              y: -36,
+              scale: 1.035,
+              autoAlpha: 0.62,
+              ease: 'none',
+              duration: 0.24,
+            }, 0.66);
+          });
+        }
+        return;
+      }
 
       // ----------------------------------------------------------------------
       // 2. 3D CAMERA-THROUGH-FRAMES MASTER TIMELINE
@@ -475,20 +541,21 @@ export const ProjectsShowreel: React.FC = () => {
         {PROJECTS_DATA.map((project, idx) => (
           <article
             key={`mobile-${project.id}`}
+            ref={(el) => { mobileCardsRef.current[idx] = el; }}
             onClick={() => setActiveModalProject(project)}
-            className="flex flex-col gap-4 border-b border-white/10 pb-12 cursor-pointer group"
+            className="flex flex-col gap-4 border-b border-white/10 pb-12 cursor-pointer group [transform-style:preserve-3d] will-change-transform"
           >
-            <div className="flex justify-between items-center text-white/50 text-[10px] font-mono tracking-[0.2em] uppercase">
+            <div className="mobile-project-meta flex justify-between items-center text-white/50 text-[10px] font-mono tracking-[0.2em] uppercase">
               <span>{String(idx + 1).padStart(2, '0')} // {project.category || 'FILM'}</span>
               <span>{project.year || '2025'}</span>
             </div>
 
-            <div className="relative w-full aspect-[16/9] rounded-xs overflow-hidden bg-zinc-950 border border-white/10 shadow-lg">
+            <div className="relative w-full aspect-[16/9] rounded-xs overflow-hidden bg-zinc-950 border border-white/10 shadow-lg [perspective:900px]">
               {project.thumbnailUrl ? (
                 <img
                   src={project.thumbnailUrl}
                   alt={project.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="mobile-project-image w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
                 />
               ) : (
@@ -511,20 +578,20 @@ export const ProjectsShowreel: React.FC = () => {
             </div>
 
             <h3
-              className="text-white text-[28px] font-bold uppercase tracking-tight leading-tight mt-2"
+              className="mobile-project-title text-white text-[28px] font-bold uppercase tracking-tight leading-tight mt-2"
               style={{ fontFamily: 'var(--font-heading)' }}
             >
               {project.title}
             </h3>
 
             {project.description && (
-              <p className="text-white/70 text-[14px] leading-relaxed font-light">
+              <p className="mobile-project-meta text-white/70 text-[14px] leading-relaxed font-light">
                 {project.description}
               </p>
             )}
 
             {project.role && (
-              <span className="text-white/40 text-[10px] font-mono uppercase tracking-[0.2em]">
+              <span className="mobile-project-meta text-white/40 text-[10px] font-mono uppercase tracking-[0.2em]">
                 ROLE // {project.role}
               </span>
             )}
