@@ -16,7 +16,7 @@ export const Contact: React.FC = () => {
   const emailRef = useRef<HTMLAnchorElement | null>(null);
   const phoneRef = useRef<HTMLAnchorElement | null>(null);
   const footerRef = useRef<HTMLDivElement | null>(null);
-  const wheelRef = useRef<HTMLDivElement | null>(null);
+ 
 
   useEffect(() => {
     const section = sectionRef.current;

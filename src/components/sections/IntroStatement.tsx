@@ -95,7 +95,6 @@ export const IntroStatement: React.FC = () => {
     const scene1 = scene1Ref.current;
     const scene2 = scene2Ref.current;
     const spatialBackdrop = null;
-    const cameraPlanes = null;
     const particleField = particleFieldRef.current;
     const particleNodes = particleField
       ? Array.from(particleField.querySelectorAll<HTMLElement>('.cursor-particle'))
