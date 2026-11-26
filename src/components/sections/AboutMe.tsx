@@ -18,7 +18,32 @@ export const AboutMe: React.FC = () => {
     const mobile = window.matchMedia('(max-width: 767px)').matches;
     const ctx = gsap.context(() => {
       const [one, two, three] = panelsRef.current;
-      if (!one || !two || !three || reduceMotion || mobile) return;
+      if (!one || !two || !three || reduceMotion) return;
+
+      if (mobile) {
+        const reveal = (elements: Element | NodeListOf<Element> | null, trigger: Element) => {
+          if (!elements || (elements instanceof NodeList && elements.length === 0)) return;
+          gsap.fromTo(elements,
+            { y: 26, opacity: 0, filter: 'blur(5px)' },
+            {
+              y: 0,
+              opacity: 1,
+              filter: 'blur(0px)',
+              duration: 0.8,
+              stagger: 0.035,
+              ease: 'power3.out',
+              scrollTrigger: { trigger, start: 'top 82%', once: true },
+            }
+          );
+        };
+
+        reveal(one.querySelectorAll('.about-reveal'), one);
+        reveal(one.querySelectorAll('.about-copy-word'), one);
+        reveal(two.querySelectorAll('.about-word'), two);
+        reveal(two.querySelectorAll('.about-copy-word'), two);
+        reveal(three.querySelectorAll('h3, .about-final-copy'), three);
+        return;
+      }
 
       gsap.set([two, three], { autoAlpha: 0, yPercent: 8, scale: 0.985 });
       const tl = gsap.timeline({

@@ -32,6 +32,30 @@ export const Contact: React.FC = () => {
       const copyWords = copyRef.current?.querySelectorAll('.copy-word');
       if (!words?.length || !invitationWords?.length || !copyWords?.length || !emailRef.current || !phoneRef.current) return;
 
+      if (mobile) {
+        const revealOnScroll = (target: Element | NodeListOf<Element>, trigger: Element, start = 'top 88%') => {
+          gsap.fromTo(target,
+            { y: 24, opacity: 0, filter: 'blur(5px)' },
+            {
+              y: 0,
+              opacity: 1,
+              filter: 'blur(0px)',
+              duration: 0.75,
+              stagger: 0.035,
+              ease: 'power3.out',
+              scrollTrigger: { trigger, start, once: true },
+            }
+          );
+        };
+
+        revealOnScroll(invitationWords, invitationRef.current ?? stage, 'top 92%');
+        revealOnScroll(words, headlineRef.current ?? stage, 'top 88%');
+        revealOnScroll(copyWords, copyRef.current ?? stage, 'top 92%');
+        if (emailRef.current) revealOnScroll(emailRef.current, emailRef.current, 'top 94%');
+        if (phoneRef.current) revealOnScroll(phoneRef.current, phoneRef.current, 'top 94%');
+        if (footerRef.current) revealOnScroll(footerRef.current, footerRef.current, 'top 98%');
+        return;
+      }
 
       const tl = gsap.timeline({
         scrollTrigger: {

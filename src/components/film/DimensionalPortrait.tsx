@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
 export const DimensionalPortrait: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -6,10 +6,9 @@ export const DimensionalPortrait: React.FC = () => {
   const imageRef = useRef<HTMLImageElement | null>(null);
   const glareRef = useRef<HTMLDivElement | null>(null);
   const ambientGlowRef = useRef<HTMLDivElement | null>(null);
+  const [motionEnabled, setMotionEnabled] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) return;
 
     let targetX = 0;
     let targetY = 0;
@@ -17,12 +16,36 @@ export const DimensionalPortrait: React.FC = () => {
     let currentY = 0;
     let rafId: number;
 
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
     const handleMouseMove = (e: MouseEvent) => {
       const { innerWidth, innerHeight } = window;
-      // Normalize cursor coordinate from -1 to 1
       targetX = (e.clientX / innerWidth - 0.5) * 2;
       targetY = (e.clientY / innerHeight - 0.5) * 2;
     };
+
+    const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
+      if (event.gamma == null || event.beta == null) return;
+      // Gentle, clamped response to physical phone tilt.
+      targetX = Math.max(-1, Math.min(1, event.gamma / 35));
+      targetY = Math.max(-1, Math.min(1, (event.beta - 35) / 45));
+    };
+
+    const OrientationEvent = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
+
+    const startDeviceMotion = () => {
+      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+    };
+    window.addEventListener('portfolio-motion-enable', startDeviceMotion);
+
+    // Android and browsers without an explicit permission gate can start listening
+    // immediately. iOS is enabled by the user's button below.
+    if (isMobile && !OrientationEvent.requestPermission) {
+      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+      setMotionEnabled(true);
+    }
+
 
     const updatePhysics = () => {
       // Damped spring interpolation (lerp factor: 0.075 for fluid cinematic motion)
@@ -67,14 +90,35 @@ export const DimensionalPortrait: React.FC = () => {
       rafId = requestAnimationFrame(updatePhysics);
     };
 
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    if (!isMobile) {
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    }
     rafId = requestAnimationFrame(updatePhysics);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
+      window.removeEventListener('portfolio-motion-enable', startDeviceMotion);
       cancelAnimationFrame(rafId);
     };
   }, []);
+
+  const enableMotion = async () => {
+    const OrientationEvent = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
+    try {
+      if (OrientationEvent.requestPermission) {
+        const permission = await OrientationEvent.requestPermission();
+        if (permission !== 'granted') return;
+      }
+      // Dispatching the event listener from this user gesture satisfies iOS permission policy.
+      window.dispatchEvent(new Event('portfolio-motion-enable'));
+      setMotionEnabled(true);
+    } catch (error) {
+      console.warn('Device motion permission was not granted.', error);
+    }
+  };
 
   return (
     <div
@@ -120,10 +164,10 @@ export const DimensionalPortrait: React.FC = () => {
 
           {/* Ambient Film Vignette */}
           <div
-            className="absolute inset-0 pointer-events-none opacity-35"
+            className="absolute inset-0 pointer-events-none opacity-10"
             style={{
               background:
-                'radial-gradient(circle at center, transparent 45%, rgba(0,0,0,0.85) 100%)',
+                'radial-gradient(circle at center, transparent 65%, rgba(0,0,0,0.45) 100%)',
             }}
           />
 
@@ -156,6 +200,14 @@ export const DimensionalPortrait: React.FC = () => {
           </div>
         </div>
       </div>
+      <button
+        type="button"
+        onClick={enableMotion}
+        className="absolute -bottom-9 right-0 z-30 rounded-full border border-white/20 bg-black/70 px-3 py-1.5 font-mono text-[9px] tracking-[.2em] text-white/65 backdrop-blur-sm transition-colors hover:border-[#d5a65b]/60 hover:text-[#d5a65b] md:hidden"
+        aria-label="Enable motion response for portrait"
+      >
+        {motionEnabled ? 'MOTION ACTIVE' : 'ENABLE MOTION'}
+      </button>
     </div>
   );
 };

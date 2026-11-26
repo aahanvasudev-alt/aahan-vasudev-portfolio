@@ -313,7 +313,7 @@ export const HeroTransition: React.FC<HeroTransitionProps> = ({
       {/* Dark vignette overlay — strictly 0 opacity initially */}
       <div
         ref={vignetteRef}
-        className="fixed inset-0 z-[1] pointer-events-none opacity-0"
+        className="fixed inset-0 z-0 pointer-events-none opacity-0"
         style={{
           background:
             'radial-gradient(ellipse at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.95) 100%)',
