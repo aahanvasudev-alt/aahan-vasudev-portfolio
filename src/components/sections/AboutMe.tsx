@@ -21,45 +21,22 @@ export const AboutMe: React.FC = () => {
       if (!one || !two || !three || reduceMotion) return;
 
       if (mobile) {
-        const reveal = (
-          elements: Element | NodeListOf<Element> | null,
-          trigger: Element,
-          key: string,
-          start = 'top 82%'
-        ) => {
-          if (!elements || (elements instanceof NodeList && elements.length === 0)) return;
-          const marker = trigger as HTMLElement;
-          const flag = `aboutReveal${key}`;
-          if (marker.dataset[flag] === 'played') return;
-
-          ScrollTrigger.create({
-            trigger,
-            start,
-            once: true,
-            onEnter: () => {
-              if (marker.dataset[flag] === 'played') return;
-              marker.dataset[flag] = 'played';
-              gsap.fromTo(elements,
-                { y: 26, opacity: 0, filter: 'blur(5px)' },
-                {
-                  y: 0,
-                  opacity: 1,
-                  filter: 'blur(0px)',
-                  duration: 0.8,
-                  stagger: 0.035,
-                  ease: 'power3.out',
-                  overwrite: 'auto',
-                }
-              );
-            },
-          });
+        const revealOnce = (elements: NodeListOf<Element> | Element, trigger: Element) => {
+          if (elements instanceof NodeList && elements.length === 0) return;
+          gsap.fromTo(elements,
+            { y: 24, opacity: 0, rotateX: -18, filter: 'blur(4px)', transformOrigin: '50% 100%' },
+            { y: 0, opacity: 1, rotateX: 0, filter: 'blur(0px)', duration: 0.72,
+              stagger: 0.035, ease: 'power3.out', immediateRender: false,
+              scrollTrigger: { trigger, start: 'top 84%', once: true, toggleActions: 'play none none none' } }
+          );
         };
-
-        reveal(one.querySelectorAll('.about-reveal'), one, 'OpeningTitle');
-        reveal(one.querySelectorAll('.about-copy-word'), one, 'OpeningCopy', 'top 88%');
-        reveal(two.querySelectorAll('.about-word'), two, 'SecondTitle');
-        reveal(two.querySelectorAll('.about-copy-word'), two, 'SecondCopy', 'top 88%');
-        reveal(three.querySelectorAll('h3, .about-final-copy'), three, 'FinalPanel');
+        // Elements remain in normal document flow. Each reveal runs once and
+        // holds its final visible state when the visitor scrolls away/back.
+        revealOnce(one.querySelectorAll('.about-reveal'), one);
+        revealOnce(one.querySelectorAll('.about-copy-word'), one);
+        revealOnce(two.querySelectorAll('.about-word'), two);
+        revealOnce(two.querySelectorAll('.about-copy-word'), two);
+        revealOnce(three.querySelectorAll('h3, .about-final-copy'), three);
         return;
       }
 

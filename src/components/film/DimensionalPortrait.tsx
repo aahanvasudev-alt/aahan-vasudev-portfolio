@@ -29,41 +29,35 @@ export const DimensionalPortrait: React.FC = () => {
       targetY = Math.max(-1, Math.min(1, (event.beta - 35) / 45));
     };
 
-    const OrientationEvent = typeof DeviceOrientationEvent !== 'undefined'
-      ? (DeviceOrientationEvent as typeof DeviceOrientationEvent & {
-          requestPermission?: () => Promise<'granted' | 'denied'>;
-        })
-      : null;
+    const OrientationEvent = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
 
-    let orientationAttached = false;
-    const attachOrientation = () => {
-      if (orientationAttached) return;
+    let orientationListening = false;
+    const startListening = () => {
+      if (orientationListening) return;
+      orientationListening = true;
       window.addEventListener('deviceorientation', handleDeviceOrientation, true);
-      orientationAttached = true;
     };
 
-    // Android and browsers without a permission gate can begin immediately.
-    // iOS asks for permission on the visitor's first natural interaction anywhere
-    // on the page, so there is no extra "Enable Motion" control in the design.
-    const requestMotionOnFirstInteraction = async () => {
-      if (!isMobile || !OrientationEvent?.requestPermission) {
-        attachOrientation();
-        return;
-      }
-      try {
-        const permission = await OrientationEvent.requestPermission();
-        if (permission === 'granted') attachOrientation();
-      } catch (error) {
-        console.warn('Device orientation permission was not granted.', error);
-      }
-    };
-
-    if (isMobile) {
-      if (OrientationEvent?.requestPermission) {
-        window.addEventListener('pointerdown', requestMotionOnFirstInteraction, { once: true, passive: true });
-      } else {
-        attachOrientation();
-      }
+    // Android and browsers without a permission gate start immediately.
+    // iOS requires a user gesture, so request permission on the first natural
+    // interaction anywhere on the page. No visible motion-enable control.
+    if (isMobile && !OrientationEvent.requestPermission) {
+      startListening();
+    } else if (isMobile && OrientationEvent.requestPermission) {
+      const requestOnFirstInteraction = async () => {
+        window.removeEventListener('pointerdown', requestOnFirstInteraction, true);
+        window.removeEventListener('touchstart', requestOnFirstInteraction, true);
+        try {
+          const permission = await OrientationEvent.requestPermission!();
+          if (permission === 'granted') startListening();
+        } catch (error) {
+          console.warn('Device orientation permission was not granted.', error);
+        }
+      };
+      window.addEventListener('pointerdown', requestOnFirstInteraction, { once: true, capture: true });
+      window.addEventListener('touchstart', requestOnFirstInteraction, { once: true, capture: true });
     }
 
     const updatePhysics = () => {
@@ -117,7 +111,6 @@ export const DimensionalPortrait: React.FC = () => {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
-      window.removeEventListener('pointerdown', requestMotionOnFirstInteraction);
       cancelAnimationFrame(rafId);
     };
   }, []);
@@ -126,7 +119,7 @@ export const DimensionalPortrait: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="relative mx-auto flex w-full max-w-[280px] items-center justify-center select-none pointer-events-auto sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]"
+      className="relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px] select-none pointer-events-auto"
       style={{ perspective: '1200px' }}
       aria-label="Portrait of Filmmaker Ashish Vooradi"
     >
@@ -145,7 +138,7 @@ export const DimensionalPortrait: React.FC = () => {
       {/* Layer 1: The Dimensional Director's Frame with solid opaque backing */}
       <div
         ref={cardRef}
-        className="relative z-10 w-full aspect-[4/5] rounded-xs bg-black border border-white/20 p-1.5 sm:p-2.5 shadow-2xl overflow-hidden transition-shadow duration-500 hover:shadow-white/10"
+        className="relative z-10 w-full aspect-[4/5] sm:aspect-[9/12] rounded-xs bg-black border border-white/20 p-2 sm:p-2.5 shadow-2xl overflow-hidden transition-shadow duration-500 hover:shadow-white/10"
         style={{
           transformStyle: 'preserve-3d',
           willChange: 'transform',
@@ -157,20 +150,20 @@ export const DimensionalPortrait: React.FC = () => {
             ref={imageRef}
             src="/images/ashish-vooradi.JPG"
             alt="Ashish Vooradi - Filmmaker"
-            className="block h-full w-full object-cover object-[50%_28%] transition-transform duration-300 ease-out filter contrast-[1.04]"
+            className="block w-full h-full object-cover object-[center_18%] transition-transform duration-300 ease-out filter contrast-[1.04]"
             style={{
               willChange: 'transform',
-              transform: 'scale(1.035)',
+              transform: 'scale(1.05)',
             }}
             loading="eager"
           />
 
           {/* Ambient Film Vignette */}
           <div
-            className="absolute inset-0 pointer-events-none opacity-[0.035]"
+            className="absolute inset-0 pointer-events-none opacity-[0.04] sm:opacity-10"
             style={{
               background:
-                'radial-gradient(circle at center, transparent 78%, rgba(0,0,0,0.22) 100%)',
+                'radial-gradient(circle at center, transparent 65%, rgba(0,0,0,0.45) 100%)',
             }}
           />
 
