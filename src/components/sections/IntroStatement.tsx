@@ -58,8 +58,6 @@ export const IntroStatement: React.FC = () => {
   useEffect(() => {
     const stage = pinnedStageRef.current;
     const scene1 = scene1Ref.current;
-    const spatialBackdrop = null;
-    const cameraPlanes = null;
     const particleField = particleFieldRef.current;
     const particleNodes = particleField
       ? Array.from(particleField.querySelectorAll<HTMLElement>('.cursor-particle'))
