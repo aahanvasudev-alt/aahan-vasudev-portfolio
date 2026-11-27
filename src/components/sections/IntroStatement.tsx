@@ -614,7 +614,7 @@ export const IntroStatement: React.FC = () => {
 
             {/* Central High-Impact Typographic Body */}
             <div
-              className="my-auto w-full flex flex-col gap-3 sm:gap-5 md:gap-7 lg:gap-8 py-4 sm:py-6"
+              className="my-auto w-full flex flex-col gap-1 sm:gap-2 md:gap-3 lg:gap-4 py-2 sm:py-3"
               style={{ transformStyle: 'preserve-3d' }}
             >
               {SEQUENCE_1_LINES.map((line) => {
@@ -626,13 +626,7 @@ export const IntroStatement: React.FC = () => {
                 return (
                   <div
                     key={line.id}
-                    className={`w-full min-w-0 flex justify-center text-center ${
-                      line.align === 'right'
-                        ? 'md:justify-end md:text-right'
-                        : line.align === 'between'
-                        ? 'md:justify-between'
-                        : 'md:justify-start md:text-left'
-                    } overflow-visible py-1.5 sm:py-2`}
+                    className="w-full min-w-0 flex justify-center text-center overflow-visible py-0.5 sm:py-1"
                     style={{ transformStyle: 'preserve-3d' }}
                   >
                     <div
@@ -640,7 +634,14 @@ export const IntroStatement: React.FC = () => {
                       style={{ transformStyle: 'preserve-3d' }}
                     >
                       {line.text.split('').map((char, cIdx) => (
-                        char === ' ' ? ' ' : (
+                        char === ' ' ? (
+                          <span
+                            key={`space-${cIdx}`}
+                            aria-hidden="true"
+                            className="inline-block"
+                            style={{ width: '0.52em', flexShrink: 0 }}
+                          />
+                        ) : (
                           <span
                             key={cIdx}
                             className="char-outer inline-block overflow-visible"
