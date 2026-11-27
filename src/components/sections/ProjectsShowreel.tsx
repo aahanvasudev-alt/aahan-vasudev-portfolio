@@ -14,7 +14,8 @@ export const ProjectsShowreel: React.FC = () => {
   const cameraSpaceRef = useRef<HTMLDivElement | null>(null);
   const planesRef = useRef<(HTMLDivElement | null)[]>([]);
   const indexIndicatorsRef = useRef<(HTMLSpanElement | null)[]>([]);
-  const mobileCardsRef = useRef<(HTMLElement | null)[]>([]);
+  const mobileStageRef = useRef<HTMLDivElement | null>(null);
+  const mobilePlanesRef = useRef<(HTMLDivElement | null)[]>([]);
 
   // Entrance header references
   const entranceRef = useRef<HTMLDivElement | null>(null);
@@ -72,69 +73,113 @@ export const ProjectsShowreel: React.FC = () => {
         );
       }
 
-      // Mobile keeps natural touch scrolling, but each project now travels through
-      // a compact 3D camera beat instead of appearing as a static list.
+      // Mobile: one pinned camera window. Each project approaches from depth,
+      // holds briefly in focus, then rushes past the lens as the next frame arrives.
       if (isMobile) {
-        if (!prefersReducedMotion) {
-          mobileCardsRef.current.forEach((card) => {
-            if (!card) return;
-            const image = card.querySelector<HTMLElement>('.mobile-project-image');
-            const title = card.querySelector<HTMLElement>('.mobile-project-title');
-            const meta = card.querySelectorAll<HTMLElement>('.mobile-project-meta');
+        const mobileStage = mobileStageRef.current;
+        const total = PROJECTS_DATA.length;
 
-            const mobileTl = gsap.timeline({
-              scrollTrigger: {
-                trigger: card,
-                start: 'top 92%',
-                end: 'bottom 12%',
-                scrub: 0.65,
-                invalidateOnRefresh: true,
-              },
+        if (mobileStage && total > 0) {
+          if (prefersReducedMotion) {
+            mobilePlanesRef.current.forEach((plane, index) => {
+              if (plane) {
+                gsap.set(plane, {
+                  autoAlpha: index === 0 ? 1 : 0,
+                  z: 0,
+                  scale: 1,
+                  rotateX: 0,
+                });
+              }
             });
+            return;
+          }
 
-            mobileTl.fromTo(card,
-              { y: 72, scale: 0.92, rotateX: 7, autoAlpha: 0.48, transformPerspective: 900 },
-              { y: 0, scale: 1, rotateX: 0, autoAlpha: 1, ease: 'none', duration: 0.42 },
-              0
-            );
+          const slice = 1;
+          const mobileTl = gsap.timeline({
+            defaults: { ease: 'none' },
+            scrollTrigger: {
+              trigger: mobileStage,
+              start: 'top top',
+              end: `+=${total * 105}%`,
+              pin: true,
+              scrub: 0.65,
+              anticipatePin: 1,
+              invalidateOnRefresh: true,
+            },
+          });
 
-            if (image) {
-              mobileTl.fromTo(image,
-                { scale: 1.2, filter: 'blur(7px)', z: -120 },
-                { scale: 1, filter: 'blur(0px)', z: 0, ease: 'none', duration: 0.42 },
-                0
+          // Establish every frame's starting depth before the scroll timeline runs.
+          mobilePlanesRef.current.forEach((plane, index) => {
+            if (!plane) return;
+            gsap.set(plane, {
+              z: index === 0 ? 0 : -1050,
+              scale: index === 0 ? 1 : 0.42,
+              rotateX: index === 0 ? 0 : 11,
+              rotateY: index === 0 ? 0 : index % 2 === 0 ? -3 : 3,
+              opacity: index === 0 ? 1 : 0,
+              visibility: index === 0 ? 'visible' : 'hidden',
+              transformOrigin: '50% 50%',
+            });
+          });
+
+          // Each incoming frame begins just before the outgoing frame clears,
+          // creating a continuous hand-off instead of three independent reveals.
+          PROJECTS_DATA.forEach((_, index) => {
+            const plane = mobilePlanesRef.current[index];
+            if (!plane) return;
+
+            const start = index * slice;
+            const approachAt = index === 0 ? 0 : start - 0.18;
+            const passAt = start + 0.48;
+
+            if (index > 0) {
+              mobileTl.set(plane, { visibility: 'visible' }, approachAt);
+              mobileTl.fromTo(
+                plane,
+                {
+                  z: -1050,
+                  scale: 0.42,
+                  rotateX: 11,
+                  rotateY: index % 2 === 0 ? -3 : 3,
+                  opacity: 0,
+                  immediateRender: false,
+                },
+                {
+                  z: 0,
+                  scale: 1,
+                  rotateX: 0,
+                  rotateY: 0,
+                  opacity: 1,
+                  duration: 0.62,
+                  ease: 'power3.out',
+                },
+                approachAt
               );
-              mobileTl.to(image, {
-                scale: 1.12,
-                filter: 'blur(2px)',
-                ease: 'none',
-                duration: 0.24,
-              }, 0.66);
             }
 
-            if (title) {
-              mobileTl.fromTo(title,
-                { y: 28, autoAlpha: 0, filter: 'blur(5px)' },
-                { y: 0, autoAlpha: 1, filter: 'blur(0px)', ease: 'none', duration: 0.22 },
-                0.2
+            if (index < total - 1) {
+              mobileTl.to(
+                plane,
+                {
+                  z: 1050,
+                  scale: 2.6,
+                  rotateX: -3,
+                  rotateY: index % 2 === 0 ? 2 : -2,
+                  opacity: 0,
+                  duration: 0.58,
+                  ease: 'power2.in',
+                },
+                passAt
               );
             }
+          });
 
-            if (meta.length) {
-              mobileTl.fromTo(meta,
-                { y: 18, autoAlpha: 0 },
-                { y: 0, autoAlpha: 1, stagger: 0.04, ease: 'none', duration: 0.2 },
-                0.28
-              );
-            }
-
-            mobileTl.to(card, {
-              y: -36,
-              scale: 1.035,
-              autoAlpha: 0.62,
-              ease: 'none',
-              duration: 0.24,
-            }, 0.66);
+          // Keep clicks on the frame that is actually closest to the lens.
+          mobileTl.eventCallback('onUpdate', () => {
+            const active = Math.min(total - 1, Math.floor(mobileTl.time() + 0.18));
+            mobilePlanesRef.current.forEach((plane, index) => {
+              if (plane) plane.style.pointerEvents = index === active ? 'auto' : 'none';
+            });
           });
         }
         return;
@@ -535,68 +580,52 @@ export const ProjectsShowreel: React.FC = () => {
       </div>
 
       {/* ==================================================================== */}
-      {/* 3. MOBILE ADAPTED SHOWCASE (<768px): CINEMATIC TOUCH CARDS          */}
+      {/* 3. MOBILE: TOUCH-DRIVEN 3D CAMERA THROUGH PROJECT FRAMES           */}
       {/* ==================================================================== */}
-      <div className="md:hidden flex flex-col gap-14 px-5 py-8 relative z-10">
-        {PROJECTS_DATA.map((project, idx) => (
-          <article
-            key={`mobile-${project.id}`}
-            ref={(el) => { mobileCardsRef.current[idx] = el; }}
-            onClick={() => setActiveModalProject(project)}
-            className="flex flex-col gap-4 border-b border-white/10 pb-12 cursor-pointer group [transform-style:preserve-3d] will-change-transform"
-          >
-            <div className="mobile-project-meta flex justify-between items-center text-white/50 text-[10px] font-mono tracking-[0.2em] uppercase">
-              <span>{String(idx + 1).padStart(2, '0')} // {project.category || 'FILM'}</span>
-              <span>{project.year || '2025'}</span>
-            </div>
-
-            <div className="relative w-full aspect-[16/9] rounded-xs overflow-hidden bg-zinc-950 border border-white/10 shadow-lg [perspective:900px]">
-              {project.thumbnailUrl ? (
-                <img
-                  src={project.thumbnailUrl}
-                  alt={project.title}
-                  className="mobile-project-image w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/20 font-mono text-xs uppercase">
-                  Film Still
+      <div ref={mobileStageRef}
+        className="md:hidden relative z-10 h-[100svh] min-h-[620px] w-full overflow-hidden flex items-center justify-center px-4"
+        style={{ perspective: '900px' }}>
+        <div className="absolute top-5 left-5 right-5 z-30 flex justify-between text-white/40 text-[9px] font-mono tracking-[.2em] uppercase pointer-events-none">
+          <span>ARRI LF // 35MM</span><span>DEPTH // CAMERA RUN</span>
+        </div>
+        <div className="relative w-full aspect-[4/5] max-h-[68svh]" style={{ transformStyle: 'preserve-3d' }}>
+          {PROJECTS_DATA.map((project, idx) => (
+            <div key={`mobile-plane-${project.id}`}
+              ref={(el) => { mobilePlanesRef.current[idx] = el; }}
+              onClick={(event) => { event.stopPropagation(); setActiveModalProject(project); }}
+              className="absolute inset-0 overflow-hidden rounded-sm border border-white/15 bg-zinc-950 shadow-2xl"
+              style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden',
+                visibility: idx === 0 ? 'visible' : 'hidden',
+                pointerEvents: idx === 0 ? 'auto' : 'none', willChange: 'transform, opacity' }}>
+              {project.thumbnailUrl
+                ? <img src={project.thumbnailUrl} alt={project.title} className="mobile-project-still h-full w-full object-cover" loading={idx < 2 ? 'eager' : 'lazy'} />
+                : <div className="flex h-full w-full items-center justify-center bg-zinc-900 text-white/25 font-mono text-xs uppercase">Cinematic Frame</div>}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: 'linear-gradient(180deg, rgba(0,0,0,.58), transparent 34%, transparent 58%, rgba(0,0,0,.72))' }} />
+              <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-start pointer-events-none">
+                <div className="min-w-0">
+                  <span className="block text-white/65 text-[9px] font-mono tracking-[.2em] uppercase">{project.category || 'FILM'} // {project.year || '2025'}</span>
+                  <h3 className="mt-2 text-white font-black uppercase text-[clamp(1.8rem,8vw,3.2rem)] leading-[.9] tracking-[-.055em]" style={{ fontFamily: 'var(--font-heading)' }}>{project.title}</h3>
                 </div>
-              )}
-
-              <div className="absolute top-3 left-3 w-3 h-3 border-t border-l border-white/60 pointer-events-none" />
-              <div className="absolute top-3 right-3 w-3 h-3 border-t border-r border-white/60 pointer-events-none" />
-              <div className="absolute bottom-3 left-3 w-3 h-3 border-b border-l border-white/60 pointer-events-none" />
-              <div className="absolute bottom-3 right-3 w-3 h-3 border-b border-r border-white/60 pointer-events-none" />
-
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="flex items-center gap-2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20 text-white text-[11px] font-mono uppercase tracking-widest">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span>Watch Film</span>
-                </div>
+                <span className="shrink-0 text-white/55 font-mono text-[10px] tracking-widest">{String(idx + 1).padStart(2, '0')} / {String(PROJECTS_DATA.length).padStart(2, '0')}</span>
               </div>
+              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                <span className="border border-white/30 bg-black/55 px-4 py-2 text-white text-[9px] font-mono tracking-[.24em] uppercase backdrop-blur-sm">View Film ↗</span>
+              </div>
+              <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end pointer-events-none">
+                <span className="max-w-[72%] text-white/60 text-[10px] leading-relaxed">{project.description || 'A cinematic project'}</span>
+                <span className="text-white/55 text-[9px] font-mono tracking-widest uppercase">Camera Push</span>
+              </div>
+              <div className="absolute top-3 left-3 w-3 h-3 border-t border-l border-white/65 pointer-events-none" />
+              <div className="absolute top-3 right-3 w-3 h-3 border-t border-r border-white/65 pointer-events-none" />
+              <div className="absolute bottom-3 left-3 w-3 h-3 border-b border-l border-white/65 pointer-events-none" />
+              <div className="absolute bottom-3 right-3 w-3 h-3 border-b border-r border-white/65 pointer-events-none" />
             </div>
-
-            <h3
-              className="mobile-project-title text-white text-[28px] font-bold uppercase tracking-tight leading-tight mt-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
-              {project.title}
-            </h3>
-
-            {project.description && (
-              <p className="mobile-project-meta text-white/70 text-[14px] leading-relaxed font-light">
-                {project.description}
-              </p>
-            )}
-
-            {project.role && (
-              <span className="mobile-project-meta text-white/40 text-[10px] font-mono uppercase tracking-[0.2em]">
-                ROLE // {project.role}
-              </span>
-            )}
-          </article>
-        ))}
+          ))}
+        </div>
+        <div className="absolute bottom-6 left-5 right-5 z-30 flex justify-between text-white/40 text-[9px] font-mono tracking-[.18em] uppercase pointer-events-none">
+          <span>SCROLL TO ADVANCE</span><span>PROJECT SEQUENCE</span>
+        </div>
       </div>
 
       {/* ==================================================================== */}
